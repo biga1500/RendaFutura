@@ -1,0 +1,27 @@
+"use client";
+
+import type { EngineCalculation } from "@/lib/recommendation";
+import { initialPortfolio } from "@/lib/initial-portfolio";
+
+const months=["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
+const percent=(value:number)=>(100*value).toLocaleString("pt-BR",{maximumFractionDigits:2})+"%";
+const money=(value:number)=>value.toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
+
+export function PortfolioComparison({result,onSelect}:{result:EngineCalculation;onSelect:(id:string)=>void}) {
+  if(!result.portfolios?.length)return null;
+  return <section className="planner-section" aria-labelledby="portfolio-comparison-title"><h2 id="portfolio-comparison-title">Carteiras por segurança e proventos</h2>
+    <p>Ordenadas da menor para a maior oscilação indicada pelo modelo; proventos estimados desempatam. Todas respeitam os limites do seu perfil. Segurança relativa não é garantia de preservação do patrimônio nem uma nota de risco de crédito.</p>
+    <fieldset className="portfolio-options"><legend>Escolha a carteira para consultar a composição e seus cenários</legend><div className="planner-table-wrap"><table className="planner-table"><thead><tr><th>Ordem</th><th>Carteira</th><th>Oscilação anual</th><th>Proventos / capital ao ano</th><th>Média mensal inicial</th><th>Atendimento da meta nos cenários</th></tr></thead><tbody>{result.portfolios.map(portfolio=>{
+      const initial=initialPortfolio(portfolio.allocation,result.assetAnalysis??[],result.plan.initial_capital,result.plan.monthly_contribution);
+      return <tr key={portfolio.id} className={portfolio.id===result.selectedPortfolioId?"portfolio-selected":""}><td>{portfolio.safetyRank}</td><td><label className="portfolio-choice"><input type="radio" name="portfolio-choice" value={portfolio.id} checked={portfolio.id===result.selectedPortfolioId} onChange={()=>onSelect(portfolio.id)}/><span>{portfolio.label}<small>{portfolio.coverage.allocatedAssets} {portfolio.coverage.allocatedAssets===1?"ativo":"ativos"} · {portfolio.historicalCoverageMonths}/12 meses com padrão histórico de pagamentos</small></span></label></td><td>{percent(portfolio.portfolio.annualVolatility)}</td><td>{percent(portfolio.portfolio.cashYield12m)}</td><td>{initial.monthlyAverage===null?"Não disponível":money(initial.monthlyAverage)}</td><td>{percent(portfolio.simulation.successFrequency)}</td></tr>;
+    })}</tbody></table></div></fieldset>
+    <p className="help">A renda inicial usa somente seu patrimônio atual e quantidades indicativas arredondadas. O indicador anual combina a previsão de proventos das ações com os juros dos títulos, sem contar capital devolvido como renda. A frequência de atendimento usa o prazo e os aportes do plano. Não são a mesma medida.</p>
+    <p className="help">Cada carteira tem sua própria simulação. Para comparação, todas usam os mesmos {result.construction?.commonFinalScenarios??result.plan.simulations} cenários de mercado e inflação, separados dos cenários da busca. Carteiras idênticas são agrupadas; se a base permitir apenas uma, não serão inventadas alternativas.</p>
+    {!!result.assetRanking?.length&&<details className="planner-details"><summary>Ativos elegíveis: segurança relativa, qualidade e proventos</summary><p>Ordem: risco cadastrado, alertas dos fundamentos disponíveis, menor oscilação de referência e maior indicador de proventos. A oscilação usa o histórico das ações e os cenários contratuais dos títulos atuais. Títulos públicos não possuem lucro por ação.</p><div className="planner-table-wrap"><table className="planner-table"><thead><tr><th>Ordem</th><th>Ativo</th><th>Risco cadastrado</th><th>Oscilação anual</th><th>Proventos / preço</th><th>Alertas de qualidade</th></tr></thead><tbody>{result.assetRanking.map(asset=><tr key={asset.ticker}><td>{asset.safetyOrder}</td><td><strong>{asset.ticker}</strong><span>{asset.name}</span></td><td>{["Baixo","Moderado","Elevado"][asset.riskLevel]}</td><td>{percent(asset.annualVolatility)}</td><td>{percent(asset.cashYield12m)}</td><td>{asset.qualityAlerts.join(" ")||"Sem alerta nos indicadores avaliados; não comprova ausência de risco."}</td></tr>)}</tbody></table></div></details>}
+  </section>;
+}
+
+export function PortfolioCalendar({result}:{result:EngineCalculation}) {
+  if(!result.historicalPaymentCalendar)return null;
+  return <section className="planner-section"><h2>Meses com pagamentos no histórico</h2><p>Na carteira em análise, {result.historicalCoverageMonths} de 12 meses apresentam um padrão histórico de {result.rollover?.contractualRedemptionPricing?"dividendos das ações":"dividendos ou juros"}. Um mês entra no padrão quando houve pagamento em pelo menos metade das ocorrências daquele mês no recorte analisado.</p><div className="payment-calendar">{result.historicalPaymentCalendar.map(row=><div key={row.month}><strong>{months[row.month-1]}</strong><span>{row.tickers.join(", ")||"Sem padrão observado"}</span></div>)}</div><p className="help">Recorte de até 36 meses até {result.referenceDate}. São datas de pagamentos observados, não datas-com ou um calendário futuro anunciado. {result.rollover?.contractualRedemptionPricing&&"Os títulos atuais seguem seu calendário contratual separado; ausência neste histórico não significa ausência de juros futuros. "}Cobertura de 12 meses não garante renda todos os meses; o Monte Carlo avalia pagamentos incertos e a renda média anual.</p></section>;
+}

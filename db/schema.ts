@@ -30,3 +30,12 @@ export const attempts = sqliteTable("attempts", {
   count: integer("count").notNull(),
   expiresAt: integer("expires_at").notNull(),
 });
+export const recommendations = sqliteTable("recommendations", {
+  userId: text("user_id").primaryKey().references(() => users.id, {onDelete:"cascade"}),
+  profileUpdatedAt: text("profile_updated_at").notNull(),
+  settings: text("settings").notNull(),
+  result: text("result").notNull(),
+  consentAt: text("consent_at").notNull(),
+  consentVersion: text("consent_version").notNull(),
+  updatedAt: text("updated_at").notNull(),
+});

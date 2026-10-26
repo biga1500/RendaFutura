@@ -12,6 +12,8 @@ const { d1, r2 } = hostingConfig;
 
 // macOS Seatbelt blocks FSEvents, so Codex previews need polling for HMR.
 const isCodexSeatbeltSandbox = process.env.CODEX_SANDBOX === "seatbelt";
+// Synced Windows folders can miss native change notifications.
+const pollSourceChanges = isCodexSeatbeltSandbox || process.platform === "win32";
 const managedLinux = readExecutionProfile() === "managed-linux";
 
 const localBindingConfig = {
@@ -56,9 +58,10 @@ export default defineConfig(async ({ command }) => {
       ...(managedLinux
         ? { host: "0.0.0.0", allowedHosts: ["terminal.local"] }
         : {}),
-      ...(isCodexSeatbeltSandbox
-        ? { watch: { useFsEvents: false, usePolling: true } }
-        : {}),
+      watch: {
+        ignored: ["**/recommender/**", "**/.recommender-venv/**", "**/.sites-runtime/**", "**/work/**"],
+        ...(pollSourceChanges ? { useFsEvents: false, usePolling: true, interval: 750 } : {}),
+      },
     },
     plugins: [
       vinext(),
@@ -78,6 +81,10 @@ export default defineConfig(async ({ command }) => {
                     entrypoint: "ConnectorPreview",
                   },
                 ],
+                vars: {
+                  ...(process.env.RECOMMENDER_URL ? { RECOMMENDER_URL: process.env.RECOMMENDER_URL } : {}),
+                  ...(process.env.RECOMMENDER_TOKEN ? { RECOMMENDER_TOKEN: process.env.RECOMMENDER_TOKEN } : {}),
+                },
               }
             : {}),
         },

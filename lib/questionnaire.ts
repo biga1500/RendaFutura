@@ -1,13 +1,17 @@
 export type Answers = Record<string, string | string[]>;
-export type Question = { id:string; number:number; label:string; help?:string; type:"number"|"money"|"select"|"radio"|"checklist"; options?:string[]; min?:number; max?:number; };
+export const RETIREMENT_GOAL = "Planejar minha aposentadoria";
+export function retirementAnswers(answers:Answers = {}):Answers {
+  return {...answers,goal:RETIREMENT_GOAL};
+}
+export type Question = { id:string; number:number; label:string; help?:string; fixedValue?:string; type:"number"|"money"|"select"|"radio"|"checklist"; options?:string[]; min?:number; max?:number; };
 export const GROUPS = [
   {title:"Objetivo e horizonte", subtitle:"O que você deseja construir", reference:"CVM nº 30/2021 · art. 3º, § 1º", questions:[
-    {id:"goal",number:1,label:"Qual é o principal objetivo do investimento?",type:"select",options:["Planejar minha aposentadoria","Gerar renda complementar","Construir uma reserva","Buscar independência financeira"]},
+    {id:"goal",number:1,label:"Objetivo do planejamento",type:"select",options:[RETIREMENT_GOAL],fixedValue:RETIREMENT_GOAL},
     {id:"age",number:2,label:"Qual é sua idade atual?",type:"number",min:18,max:100},
     {id:"retirementAge",number:3,label:"Com que idade pretende se aposentar?",type:"number",min:19,max:105},
     {id:"targetIncome",number:4,label:"Qual renda mensal deseja na aposentadoria?",type:"money",min:1,max:1000000,help:"Valor aproximado, em reais de hoje."},
     {id:"withdrawal",number:5,label:"Quando poderá precisar resgatar parte relevante do dinheiro?",type:"select",options:["Em menos de 1 ano","Entre 1 e 3 anos","Entre 3 e 5 anos","Depois de 5 anos"]},
-    {id:"initialCapital",number:6,label:"Quanto já tem disponível para esse objetivo?",type:"money",min:0,max:100000000,help:"Uma estimativa é suficiente. Não solicitamos extratos ou comprovantes."},
+    {id:"initialCapital",number:6,label:"Quanto já tem disponível para a aposentadoria?",type:"money",min:0,max:100000000,help:"Uma estimativa é suficiente. Não solicitamos extratos ou comprovantes."},
   ] as Question[]},
   {title:"Situação financeira",subtitle:"Capacidade de investimento e liquidez",reference:"CVM nº 30/2021 · art. 3º, § 2º",questions:[
     {id:"contribution",number:7,label:"Quanto consegue investir por mês?",type:"select",options:["Não consigo aportar no momento","Até R$ 500","De R$ 501 a R$ 1.500","De R$ 1.501 a R$ 3.000","Mais de R$ 3.000"]},
@@ -33,6 +37,10 @@ export function validateAnswers(input:unknown, complete=false):Answers {
   if (!input || typeof input !== "object" || Array.isArray(input)) throw new Error("Respostas inválidas.");
   const answers:Answers={};
   for (const q of QUESTIONS) {
+    if(q.fixedValue!==undefined) {
+      answers[q.id]=q.fixedValue;
+      continue;
+    }
     const value=(input as Answers)[q.id];
     if (value === undefined || value === "" || (Array.isArray(value)&&!value.length)) {
       if (complete) throw new Error(`Responda a pergunta ${q.number}: ${q.label}`);
